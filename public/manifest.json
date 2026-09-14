@@ -1,0 +1,19 @@
+{
+  "name": "AlterHaven — Plural & DID System Hub",
+  "short_name": "AlterHaven",
+  "description": "Private, local-first internal communication, corkboard, and fronting management for plural & DID systems.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "health", "productivity"]
+}
