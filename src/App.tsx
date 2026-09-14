@@ -17,6 +17,7 @@ import { FrontSwitcherModal } from './components/Alters/FrontSwitcherModal';
 import { HandoffBriefingModal } from './components/Tasks/HandoffBriefingModal';
 import { QrSyncModal } from './components/Sync/QrSyncModal';
 import { PwaInstallModal } from './components/Install/PwaInstallModal';
+import { SetupWizardModal } from './components/Setup/SetupWizardModal';
 import { useSystemStore } from './store/useSystemStore';
 
 export function App() {
@@ -34,6 +35,8 @@ export function App() {
     openBriefingModal,
     isQrSyncModalOpen,
     closeQrSyncModal,
+    isSetupWizardOpen,
+    closeSetupWizard,
     devicePrefs,
   } = useSystemStore();
 
@@ -115,6 +118,14 @@ export function App() {
       {/* PWA Home Screen Installation Modal */}
       {isInstallModalOpen && (
         <PwaInstallModal onClose={() => setIsInstallModalOpen(false)} />
+      )}
+
+      {/* Setup Wizard Modal */}
+      {isSetupWizardOpen && (
+        <SetupWizardModal
+          isOpen={isSetupWizardOpen}
+          onClose={closeSetupWizard}
+        />
       )}
     </div>
   );

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Alter, AlterRole } from '../../types';
 import { useSystemStore } from '../../store/useSystemStore';
-import { X, Sparkles, Shield, Lock, Radio } from 'lucide-react';
+import { X, Sparkles, Shield, Lock, Radio, Image as ImageIcon, Upload, Trash2 } from 'lucide-react';
+import { processImageFile } from '../../utils/imageUtils';
 
 interface AlterModalProps {
   alter?: Alter | null;
@@ -258,14 +259,58 @@ export const AlterModal: React.FC<AlterModalProps> = ({ alter, onClose }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Avatar Image URL (Optional)
+                Avatar Profile Picture (Optional)
               </label>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-inner relative overflow-hidden ring-1 ring-white/20 shrink-0"
+                  style={{ backgroundColor: colorHex }}
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    name.slice(0, 2).toUpperCase() || '?'
+                  )}
+                </div>
+
+                <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const dataUrl = await processImageFile(file);
+                          setAvatarUrl(dataUrl);
+                        } catch {
+                          alert('Failed to process image.');
+                        }
+                      }
+                    }}
+                  />
+                </label>
+
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl('')}
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-400 hover:text-rose-400 transition-colors"
+                    title="Remove Photo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <input
                 type="url"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Or paste web image URL..."
+                className="w-full mt-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 

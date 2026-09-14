@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   System,
   Alter,
+  AlterRole,
   FrontMember,
   FrontLog,
   Board,
@@ -72,6 +73,9 @@ export interface SystemState {
   messages: InnerMessage[];
   setActiveChannelId: (id: string) => void;
   addChannel: (channel: Omit<Channel, 'id' | 'createdAt'>) => void;
+  deleteChannel: (id: string) => void;
+  deleteMessage: (id: string) => void;
+  clearChannelMessages: (channelId: string) => void;
   sendMessage: (channelId: string, senderAlterId: string, content: string, audioUrl?: string, audioDurationSec?: number) => void;
   pinMessageToBoard: (messageId: string, boardId: string) => void;
 
@@ -132,6 +136,25 @@ export interface SystemState {
 
   // Reset & Factory Defaults
   resetToDefaultData: () => void;
+
+  // Setup Wizard & Zero Reset
+  isSetupWizardOpen: boolean;
+  openSetupWizard: () => void;
+  closeSetupWizard: () => void;
+  initializeNewSystem: (
+    systemName: string,
+    tagline: string,
+    avatarUrl: string,
+    firstAlterData: {
+      name: string;
+      pronouns: string[];
+      colorHex: string;
+      avatarUrl?: string;
+      roles: string[];
+      ageAppearance?: string;
+      description?: string;
+    }
+  ) => void;
 }
 
 
@@ -826,10 +849,9 @@ const mergeSavedState = (saved: any) => {
   const mergedBodyNeeds: BodyNeedsMeter = {
     ...initialBodyNeeds,
     ...(saved.bodyNeeds || {}),
-    medications:
-      Array.isArray(saved.bodyNeeds?.medications) && saved.bodyNeeds.medications.length > 0
-        ? saved.bodyNeeds.medications
-        : initialBodyNeeds.medications,
+    medications: Array.isArray(saved.bodyNeeds?.medications)
+      ? saved.bodyNeeds.medications
+      : (saved.bodyNeeds ? [] : initialBodyNeeds.medications),
   };
 
   const mergedBoards: Board[] =
@@ -839,7 +861,7 @@ const mergeSavedState = (saved: any) => {
           theme: b.theme || 'cork',
           scope: b.scope || (b.ownerAlterId ? 'alter_private' : 'common'),
         }))
-      : initialBoards;
+      : (saved.boards !== undefined ? saved.boards : initialBoards);
 
   const mergedAlters: Alter[] =
     Array.isArray(saved.alters) && saved.alters.length > 0
@@ -850,43 +872,33 @@ const mergeSavedState = (saved: any) => {
           sensoryAnchors: a.sensoryAnchors || { positiveTriggers: [], distressTriggers: [] },
           allowExternalBroadcast: a.allowExternalBroadcast ?? true,
         }))
-      : initialAlters;
+      : (saved.alters !== undefined ? saved.alters : initialAlters);
+
+    const mergedChannels = Array.isArray(saved.channels) ? saved.channels : (saved.channels !== undefined ? [] : initialChannels);
 
   return {
     system: saved.system || initialSystem,
     alters: mergedAlters,
     boards: mergedBoards,
-    widgets: Array.isArray(saved.widgets) && saved.widgets.length > 0 ? saved.widgets : initialWidgets,
-    tasks: Array.isArray(saved.tasks) && saved.tasks.length > 0 ? saved.tasks : initialTasks,
-    channels: Array.isArray(saved.channels) && saved.channels.length > 0 ? saved.channels : initialChannels,
-    messages: Array.isArray(saved.messages) && saved.messages.length > 0 ? saved.messages : initialMessages,
+    widgets: Array.isArray(saved.widgets) ? saved.widgets : (saved.widgets !== undefined ? [] : initialWidgets),
+    tasks: Array.isArray(saved.tasks) ? saved.tasks : (saved.tasks !== undefined ? [] : initialTasks),
+    channels: mergedChannels,
+    messages: Array.isArray(saved.messages) ? saved.messages : (saved.messages !== undefined ? [] : initialMessages),
     bodyNeeds: mergedBodyNeeds,
-    webhooks: Array.isArray(saved.webhooks) && saved.webhooks.length > 0 ? saved.webhooks : initialWebhooks,
-    playlists: Array.isArray(saved.playlists) && saved.playlists.length > 0 ? saved.playlists : initialPlaylists,
-    rules: Array.isArray(saved.rules) && saved.rules.length > 0 ? saved.rules : initialRules,
-    polls: Array.isArray(saved.polls) && saved.polls.length > 0 ? saved.polls : initialPolls,
-    contacts: Array.isArray(saved.contacts) && saved.contacts.length > 0 ? saved.contacts : initialContacts,
+    webhooks: Array.isArray(saved.webhooks) ? saved.webhooks : (saved.webhooks !== undefined ? [] : initialWebhooks),
+    playlists: Array.isArray(saved.playlists) ? saved.playlists : (saved.playlists !== undefined ? [] : initialPlaylists),
+    rules: Array.isArray(saved.rules) ? saved.rules : (saved.rules !== undefined ? [] : initialRules),
+    polls: Array.isArray(saved.polls) ? saved.polls : (saved.polls !== undefined ? [] : initialPolls),
+    contacts: Array.isArray(saved.contacts) ? saved.contacts : (saved.contacts !== undefined ? [] : initialContacts),
     devicePrefs: { ...initialDevicePrefs, ...(saved.devicePrefs || {}) },
     activeBoardId: saved.activeBoardId || mergedBoards[0]?.id || 'board_common',
-    activeChannelId: saved.activeChannelId || 'ch_general',
-    activeFronts: Array.isArray(saved.activeFronts) && saved.activeFronts.length > 0
+    activeChannelId: (saved.activeChannelId && mergedChannels.some((c: Channel) => c.id === saved.activeChannelId))
+      ? saved.activeChannelId
+      : (mergedChannels[0]?.id || ''),
+    activeFronts: Array.isArray(saved.activeFronts)
       ? saved.activeFronts
-      : [
-          { alterId: mergedAlters[0]?.id || 'alt_1', status: 'front', startedAt: Date.now() - 3600000 * 2 },
-          { alterId: mergedAlters[1]?.id || 'alt_2', status: 'co-front', startedAt: Date.now() - 3600000 },
-        ],
-    frontLogs: Array.isArray(saved.frontLogs) && saved.frontLogs.length > 0 ? saved.frontLogs : [
-      {
-        id: 'fl_1',
-        systemId: 'sys_1',
-        alterId: 'alt_1',
-        status: 'front',
-        startedAt: Date.now() - 3600000 * 8,
-        endedAt: Date.now() - 3600000 * 3,
-        energyLevel: 8,
-        notes: 'Handled morning lectures and reading.',
-      },
-    ],
+      : (mergedAlters[0] ? [{ alterId: mergedAlters[0].id, status: 'front', startedAt: Date.now() }] : []),
+    frontLogs: Array.isArray(saved.frontLogs) ? saved.frontLogs : [],
   };
 };
 
@@ -1234,6 +1246,40 @@ export const useSystemStore = create<SystemState>((set, get) => ({
       const updatedChannels = [...state.channels, newChannel];
       saveStore({ ...state, channels: updatedChannels });
       return { channels: updatedChannels, activeChannelId: newChannel.id };
+    });
+  },
+
+  deleteChannel: (id: string) => {
+    set((state: SystemState) => {
+      const updatedChannels = state.channels.filter((c: Channel) => c.id !== id);
+      const updatedMessages = state.messages.filter((m: InnerMessage) => m.channelId !== id);
+      let newActiveChannelId = state.activeChannelId;
+      if (state.activeChannelId === id) {
+        newActiveChannelId = updatedChannels[0]?.id || '';
+      }
+      const nextState = {
+        channels: updatedChannels,
+        messages: updatedMessages,
+        activeChannelId: newActiveChannelId,
+      };
+      saveStore({ ...state, ...nextState });
+      return nextState;
+    });
+  },
+
+  deleteMessage: (id: string) => {
+    set((state: SystemState) => {
+      const updatedMessages = state.messages.filter((m: InnerMessage) => m.id !== id);
+      saveStore({ ...state, messages: updatedMessages });
+      return { messages: updatedMessages };
+    });
+  },
+
+  clearChannelMessages: (channelId: string) => {
+    set((state: SystemState) => {
+      const updatedMessages = state.messages.filter((m: InnerMessage) => m.channelId !== channelId);
+      saveStore({ ...state, messages: updatedMessages });
+      return { messages: updatedMessages };
     });
   },
 
@@ -1648,6 +1694,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
         widgets: parsed.widgets || [],
         tasks: parsed.tasks || [],
         channels: parsed.channels || [],
+        activeChannelId: parsed.channels?.[0]?.id || '',
         messages: parsed.messages || [],
         bodyNeeds: parsed.bodyNeeds || get().bodyNeeds,
         webhooks: parsed.webhooks || [],
@@ -1668,6 +1715,133 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   // Switch-In Handoff Briefing
   openBriefingModal: (alterId: string) => set({ isBriefingModalOpen: true, briefingAlterId: alterId }),
   closeBriefingModal: () => set({ isBriefingModalOpen: false, briefingAlterId: null }),
+
+  // Setup Wizard & Zero Reset
+  isSetupWizardOpen: false,
+  openSetupWizard: () => set({ isSetupWizardOpen: true }),
+  closeSetupWizard: () => set({ isSetupWizardOpen: false }),
+
+  initializeNewSystem: (systemName, tagline, avatarUrl, firstAlterData) => {
+    const sysId = 'sys_' + Date.now();
+    const altId = 'alt_' + Date.now();
+    const boardCommonId = 'board_common';
+    const boardAlterId = 'board_' + altId;
+
+    const newSystem: System = {
+      id: sysId,
+      name: systemName.trim() || 'My System',
+      tagline: tagline.trim() || 'Cooperative internal harmony & shared living',
+      avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=150&auto=format&fit=crop&q=80',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const firstAlter: Alter = {
+      id: altId,
+      systemId: sysId,
+      name: firstAlterData.name.trim() || 'Host',
+      pronouns: firstAlterData.pronouns.length > 0 ? firstAlterData.pronouns : ['they', 'them'],
+      colorHex: firstAlterData.colorHex || '#6366f1',
+      avatarUrl: firstAlterData.avatarUrl || '',
+      roles: (firstAlterData.roles.length > 0 ? firstAlterData.roles : ['Host']) as AlterRole[],
+      ageAppearance: firstAlterData.ageAppearance || '',
+      description: firstAlterData.description || 'System Host / Core Member',
+      sensoryAnchors: { positiveTriggers: [], distressTriggers: [] },
+      isVaultLocked: false,
+      allowExternalBroadcast: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const freshBoards: Board[] = [
+      {
+        id: boardCommonId,
+        systemId: sysId,
+        title: '🌟 System Common Board',
+        theme: 'cork',
+        scope: 'common',
+        createdAt: Date.now(),
+      },
+      {
+        id: boardAlterId,
+        systemId: sysId,
+        ownerAlterId: altId,
+        title: `${firstAlter.name}'s Desk`,
+        theme: 'slate',
+        scope: 'alter_private',
+        createdAt: Date.now(),
+      },
+    ];
+
+    const freshWidgets: BoardWidget[] = [
+      {
+        id: 'w_welcome_' + Date.now(),
+        boardId: boardCommonId,
+        type: 'sticky_note',
+        position: { x: 60, y: 60, zIndex: 1 },
+        size: { width: 300, height: 240 },
+        color: '#fef08a',
+        authorAlterId: altId,
+        title: `Welcome to ${newSystem.name}!`,
+        content: `This is your private, local-first system board.\n\n• Add more alters in the Alters tab.\n• Post notes, voice memos, and checklists.\n• Track front switches & body care.\n\nAll data is stored 100% securely on your device.`,
+        isPinned: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ];
+
+    const freshChannels: Channel[] = [
+      {
+        id: 'ch_general',
+        systemId: sysId,
+        type: 'general',
+        name: '🌟 System General',
+        description: 'Shared open space for all alters to leave daily messages.',
+        createdAt: Date.now(),
+      },
+    ];
+
+    const freshBodyNeeds: BodyNeedsMeter = {
+      hydrationScore: 7,
+      energyScore: 7,
+      sensoryOverloadScore: 2,
+      lastWaterTime: Date.now(),
+      lastMealTime: Date.now(),
+      medications: [],
+      updatedAt: Date.now(),
+    };
+
+    set({
+      system: newSystem,
+      alters: [firstAlter],
+      boards: freshBoards,
+      widgets: freshWidgets,
+      tasks: [],
+      channels: freshChannels,
+      messages: [],
+      bodyNeeds: freshBodyNeeds,
+      webhooks: [],
+      playlists: initialPlaylists,
+      rules: [],
+      polls: [],
+      contacts: [],
+      activeBoardId: boardCommonId,
+      activeChannelId: 'ch_general',
+      activeFronts: [{ alterId: altId, status: 'front', startedAt: Date.now() }],
+      frontLogs: [
+        {
+          id: 'fl_' + Date.now(),
+          systemId: sysId,
+          alterId: altId,
+          status: 'front',
+          startedAt: Date.now(),
+          energyLevel: 8,
+          notes: 'System initialized.',
+        },
+      ],
+      isSetupWizardOpen: false,
+    });
+  },
 }));
 
 function saveStore(state: any) {
@@ -1697,4 +1871,9 @@ function saveStore(state: any) {
     console.error('Failed to persist to localStorage', e);
   }
 }
+
+// Automatically persist all state changes to local storage
+useSystemStore.subscribe((state) => {
+  saveStore(state);
+});
 

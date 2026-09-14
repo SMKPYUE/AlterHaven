@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSystemStore } from '../../store/useSystemStore';
 import type { SwitchWebhookConfig, WebhookPreset } from '../../types';
 import { SoundEngine } from '../../utils/soundEffects';
+import { processImageFile } from '../../utils/imageUtils';
 import {
   Settings,
   Radio,
@@ -37,6 +38,7 @@ export const SettingsView: React.FC = () => {
     devicePrefs,
     updateDevicePrefs,
     resetToDefaultData,
+    openSetupWizard,
   } = useSystemStore();
 
 
@@ -168,12 +170,54 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Avatar Image URL</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">System Avatar Image</label>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-500/30 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="System Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                )}
+              </div>
+
+              <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload Local Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      try {
+                        const dataUrl = await processImageFile(file);
+                        setAvatarUrl(dataUrl);
+                      } catch {
+                        alert('Failed to process image file.');
+                      }
+                    }
+                  }}
+                />
+              </label>
+
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl('')}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-400 hover:text-rose-400 transition-colors"
+                  title="Remove Image"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <input
               type="url"
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
+              placeholder="Or paste image URL (https://...)"
+              className="w-full mt-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -431,6 +475,19 @@ export const SettingsView: React.FC = () => {
               className="hidden"
             />
           </label>
+
+          <button
+            onClick={() => {
+              if (confirm('Start from scratch? This will launch the Setup Wizard to customize your system name and first alter with a fresh, clean slate.')) {
+                openSetupWizard();
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/50 text-indigo-300 text-xs font-semibold transition-all shadow-lg shadow-indigo-600/10"
+            title="Start from scratch with a guided setup wizard"
+          >
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <span>Start from Scratch (Setup Wizard)</span>
+          </button>
 
           <button
             onClick={() => {
