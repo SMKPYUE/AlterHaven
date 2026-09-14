@@ -1,4 +1,4 @@
-const CACHE_NAME = 'systemboard-cache-v2';
+const CACHE_NAME = 'alterhaven-cache-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cached) => {
           if (cached) return cached;
           if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html');
+            return caches.match('./index.html') || caches.match('./');
           }
         });
       })
