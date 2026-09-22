@@ -20,6 +20,9 @@ import type {
   ExternalContact,
   AlterComfortLevel,
   MedicationRecord,
+  JournalEntry,
+  JournalCategory,
+  JournalMood,
 } from '../types';
 import { dispatchSwitchWebhook } from '../utils/webhookDispatcher';
 import { SoundEngine } from '../utils/soundEffects';
@@ -124,6 +127,12 @@ export interface SystemState {
   deleteContact: (id: string) => void;
   updateAlterContactComfort: (contactId: string, alterId: string, comfort: AlterComfortLevel, isOutTo: boolean, notes?: string) => void;
 
+  // 8. System Journal & Structured Reflections
+  journals: JournalEntry[];
+  addJournal: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateJournal: (id: string, updates: Partial<JournalEntry>) => void;
+  deleteJournal: (id: string) => void;
+
   // QR / Offline Sync Engine
   isQrSyncModalOpen: boolean;
   openQrSyncModal: () => void;
@@ -190,6 +199,7 @@ const saveStore = (state: any) => {
       rules: state.rules,
       polls: state.polls,
       contacts: state.contacts,
+      journals: state.journals,
       devicePrefs: state.devicePrefs,
       activeBoardId: state.activeBoardId,
       activeChannelId: state.activeChannelId,
@@ -825,6 +835,49 @@ const initialContacts: ExternalContact[] = [
   },
 ];
 
+const initialJournals: JournalEntry[] = [
+  {
+    id: 'j_1',
+    systemId: 'sys_1',
+    authorAlterId: 'alt_1',
+    coAuthorAlterIds: ['alt_2'],
+    title: 'Morning Switch & Daily Rhythm',
+    category: 'daily_reflection',
+    mood: 'grounded',
+    content: 'Had a smooth morning switch today. Maya kept front steady during the commute, and I took over for morning work. Remember to take the afternoon medication on time and stay hydrated.',
+    tags: ['Switch', 'Work', 'Rhythm'],
+    date: Date.now() - 3600000 * 5,
+    createdAt: Date.now() - 3600000 * 5,
+    updatedAt: Date.now() - 3600000 * 5,
+  },
+  {
+    id: 'j_2',
+    systemId: 'sys_1',
+    authorAlterId: 'alt_2',
+    title: 'Therapy Session Prep & Grounding Anchors',
+    category: 'therapy_notes',
+    mood: 'calm',
+    content: 'Topics for upcoming therapy:\n1. Boundary setting in social gatherings.\n2. Sensory grounding anchors that helped this week (headphones in crowded transit, warm herbal tea).\n3. Check-in on co-consciousness between ISH and Host.',
+    tags: ['Therapy', 'Grounding', 'Boundaries'],
+    date: Date.now() - 86400000 * 2,
+    createdAt: Date.now() - 86400000 * 2,
+    updatedAt: Date.now() - 86400000 * 2,
+  },
+  {
+    id: 'j_3',
+    systemId: 'sys_1',
+    authorAlterId: 'alt_3',
+    title: 'Art Space & Creative Doodles',
+    category: 'memory_cocon',
+    mood: 'joyful',
+    content: 'Drew some colorful flowers and stars on the corkboard today! Maya helped keep things quiet while sketching.',
+    tags: ['Art', 'Co-Con', 'Creativity'],
+    date: Date.now() - 86400000 * 4,
+    createdAt: Date.now() - 86400000 * 4,
+    updatedAt: Date.now() - 86400000 * 4,
+  },
+];
+
 const initialDevicePrefs: DevicePreferences = {
   soundEnabled: true,
   soundVolume: 0.5,
@@ -947,6 +1000,7 @@ const mergeSavedState = (saved: any) => {
     rules: Array.isArray(saved.rules) ? saved.rules : (saved.rules !== undefined ? [] : initialRules),
     polls: Array.isArray(saved.polls) ? saved.polls : (saved.polls !== undefined ? [] : initialPolls),
     contacts: Array.isArray(saved.contacts) ? saved.contacts : (saved.contacts !== undefined ? [] : initialContacts),
+    journals: Array.isArray(saved.journals) ? saved.journals : (saved.journals !== undefined ? [] : initialJournals),
     devicePrefs: { ...initialDevicePrefs, ...(saved.devicePrefs || {}) },
     activeBoardId: saved.activeBoardId || mergedBoards[0]?.id || 'board_common',
     activeChannelId: (saved.activeChannelId && mergedChannels.some((c: Channel) => c.id === saved.activeChannelId))
@@ -981,6 +1035,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   rules: hydrated.rules,
   polls: hydrated.polls,
   contacts: hydrated.contacts,
+  journals: hydrated.journals,
   isQrSyncModalOpen: false,
 
   isBriefingModalOpen: false,
@@ -1062,6 +1117,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
       rules: fresh.rules,
       polls: fresh.polls,
       contacts: fresh.contacts,
+      journals: fresh.journals,
       devicePrefs: fresh.devicePrefs,
       activeBoardId: fresh.activeBoardId,
       activeChannelId: fresh.activeChannelId,
@@ -1806,6 +1862,46 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     });
   },
 
+  // 8. System Journal Actions
+  addJournal: (entryData: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+    set((state: SystemState) => {
+      const now = Date.now();
+      const newEntry: JournalEntry = {
+        ...entryData,
+        id: 'j_' + now + '_' + Math.random().toString(36).substring(2, 6),
+        systemId: state.system.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const updated = [newEntry, ...state.journals].sort((a, b) => b.date - a.date);
+      SoundEngine.playPitchedSound(state.devicePrefs.soundPack, 520, 0.2, state.devicePrefs.soundVolume);
+      saveStore({ ...state, journals: updated });
+      return { journals: updated };
+    });
+  },
+
+  updateJournal: (id: string, updates: Partial<JournalEntry>) => {
+    set((state: SystemState) => {
+      const updated = state.journals
+        .map((j: JournalEntry) =>
+          j.id === id ? { ...j, ...updates, updatedAt: Date.now() } : j
+        )
+        .sort((a, b) => b.date - a.date);
+      SoundEngine.playPitchedSound(state.devicePrefs.soundPack, 580, 0.15, state.devicePrefs.soundVolume);
+      saveStore({ ...state, journals: updated });
+      return { journals: updated };
+    });
+  },
+
+  deleteJournal: (id: string) => {
+    set((state: SystemState) => {
+      const updated = state.journals.filter((j: JournalEntry) => j.id !== id);
+      SoundEngine.playPitchedSound(state.devicePrefs.soundPack, 280, 0.2, state.devicePrefs.soundVolume);
+      saveStore({ ...state, journals: updated });
+      return { journals: updated };
+    });
+  },
+
   // QR / Offline Sync Engine
   openQrSyncModal: () => set({ isQrSyncModalOpen: true }),
   closeQrSyncModal: () => set({ isQrSyncModalOpen: false }),
@@ -1829,6 +1925,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
       rules: state.rules,
       polls: state.polls,
       contacts: state.contacts,
+      journals: state.journals,
       devicePrefs: state.devicePrefs,
       exportedAt: Date.now(),
       appVersion: '2.0',
@@ -1859,6 +1956,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
         rules: parsed.rules || [],
         polls: parsed.polls || [],
         contacts: parsed.contacts || [],
+        journals: parsed.journals || [],
         devicePrefs: parsed.devicePrefs || get().devicePrefs,
       });
       saveStore(get());

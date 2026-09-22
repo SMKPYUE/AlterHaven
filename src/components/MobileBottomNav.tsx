@@ -11,6 +11,7 @@ import {
   Vote,
   Contact,
   FileText,
+  PenTool,
 } from 'lucide-react';
 import { TabType } from './Sidebar';
 import { useSystemStore } from '../store/useSystemStore';
@@ -33,6 +34,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, set
 
   const tabs = [
     { id: 'corkboard' as TabType, label: 'Board', icon: LayoutDashboard },
+    { id: 'journal' as TabType, label: 'Journal', icon: PenTool },
     { id: 'tasks' as TabType, label: 'Tasks', icon: CheckSquare, badge: pendingTasksCount > 0 ? pendingTasksCount : undefined },
     { id: 'chat' as TabType, label: 'Chat', icon: MessageSquare },
     { id: 'codex' as TabType, label: 'Codex', icon: BookOpen },

@@ -12,6 +12,7 @@ import { CodexView } from './components/Codex/CodexView';
 import { PollsView } from './components/Polls/PollsView';
 import { ContactsView } from './components/Contacts/ContactsView';
 import { ClinicalReportView } from './components/ClinicalReport/ClinicalReportView';
+import { JournalView } from './components/Journal/JournalView';
 import { SettingsView } from './components/Settings/SettingsView';
 import { FrontSwitcherModal } from './components/Alters/FrontSwitcherModal';
 import { HandoffBriefingModal } from './components/Tasks/HandoffBriefingModal';
@@ -40,6 +41,23 @@ export function App() {
     closeSetupWizard,
     devicePrefs,
   } = useSystemStore();
+
+  // Handle PWA App Shortcuts & Query Actions (e.g. ?action=switch, ?action=journal)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      if (action === 'switch') {
+        setIsFrontModalOpen(true);
+      } else if (action === 'journal') {
+        setActiveTab('journal');
+      } else if (action === 'care') {
+        setActiveTab('body_care');
+      } else if (action === 'tasks') {
+        setActiveTab('tasks');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -81,6 +99,7 @@ export function App() {
           }`}
         >
           {activeTab === 'corkboard' && <CorkboardView />}
+          {activeTab === 'journal' && <JournalView />}
           {activeTab === 'tasks' && <TaskManager />}
           {activeTab === 'chat' && <InnerChat />}
           {activeTab === 'front_tracker' && (

@@ -35,5 +35,35 @@
       "purpose": "any"
     }
   ],
-  "categories": ["lifestyle", "health", "productivity"]
+  "categories": ["lifestyle", "health", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Quick Front Switch",
+      "short_name": "Switch",
+      "description": "Switch or record the active fronting alter",
+      "url": "./?action=switch",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "System Journal",
+      "short_name": "Journal",
+      "description": "Write a journal reflection or therapy note",
+      "url": "./?action=journal",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Body Needs & Care",
+      "short_name": "Care",
+      "description": "Check medications and grounding status",
+      "url": "./?action=care",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Missions & Tasks",
+      "short_name": "Tasks",
+      "description": "View and manage system tasks",
+      "url": "./?action=tasks",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

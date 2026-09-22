@@ -14,11 +14,13 @@ import {
   FileText,
   QrCode,
   Download,
+  PenTool,
 } from 'lucide-react';
 import { useSystemStore } from '../store/useSystemStore';
 
 export type TabType =
   | 'corkboard'
+  | 'journal'
   | 'tasks'
   | 'chat'
   | 'front_tracker'
@@ -57,6 +59,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Corkboard',
       icon: LayoutDashboard,
       description: 'Spatial notes & widgets',
+    },
+    {
+      id: 'journal' as TabType,
+      label: 'System Journal',
+      icon: PenTool,
+      description: 'Reflections & therapy logs',
     },
     {
       id: 'tasks' as TabType,

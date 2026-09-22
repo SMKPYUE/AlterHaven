@@ -371,3 +371,40 @@ export interface ClinicalReportConfig {
   anonymizeAlterNames: boolean; // Replaces names with "Alter #1 (Host)", etc.
 }
 
+// 8. System Journal & Structured Reflections
+export type JournalCategory =
+  | 'daily_reflection'
+  | 'therapy_notes'
+  | 'vent_grounding'
+  | 'memory_cocon'
+  | 'alter_private'
+  | 'general';
+
+export type JournalMood =
+  | 'grounded'
+  | 'calm'
+  | 'joyful'
+  | 'blurry'
+  | 'foggy'
+  | 'anxious'
+  | 'triggered'
+  | 'exhausted'
+  | 'co_conscious';
+
+export interface JournalEntry {
+  id: string;
+  systemId: string;
+  authorAlterId: string;
+  coAuthorAlterIds?: string[];
+  title: string;
+  category: JournalCategory;
+  mood?: JournalMood;
+  content: string;
+  tags?: string[];
+  isPrivate?: boolean;
+  date: number; // Date/timestamp represented by this entry (supports backdating)
+  createdAt: number;
+  updatedAt: number;
+}
+
+
