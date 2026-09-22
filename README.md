@@ -1,6 +1,6 @@
 # AlterHaven — Plural & DID System Management Hub
 
-> **A private, local-first workspace designed for Dissociative Identity Disorder (DID), OSDD, and Plural Systems to collaborate, switch, organize, and thrive.**
+> **A private, local-first workspace designed for Dissociative Identity Disorder (DID), OSDD, and Plural Systems to collaborate, switch, organize, and thrive. This was made to assist my partner in day to day life others useing it is a bonus**
 
 ---
 
