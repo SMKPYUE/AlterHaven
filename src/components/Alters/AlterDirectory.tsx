@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Activity,
   Heart,
+  Zap,
 } from 'lucide-react';
 import { AlterModal } from './AlterModal';
 
@@ -251,8 +252,27 @@ export const AlterDirectory: React.FC = () => {
                 ) : (
                   /* Sensory Anchors Accordion/Box */
                   <div className="space-y-2 my-3 p-3 rounded-xl bg-slate-950/50 border border-slate-800/80 text-[11px]">
-                    {alter.sensoryAnchors?.positiveTriggers && alter.sensoryAnchors.positiveTriggers.length > 0 && (
+                    {alter.sensoryAnchors?.switchTriggers && alter.sensoryAnchors.switchTriggers.length > 0 && (
                       <div>
+                        <div className="flex items-center gap-1 text-amber-400 font-semibold mb-1">
+                          <Zap className="w-3 h-3" />
+                          <span>Positive Switch Triggers:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {alter.sensoryAnchors.switchTriggers.map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/40"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {alter.sensoryAnchors?.positiveTriggers && alter.sensoryAnchors.positiveTriggers.length > 0 && (
+                      <div className={alter.sensoryAnchors?.switchTriggers && alter.sensoryAnchors.switchTriggers.length > 0 ? "mt-2 pt-2 border-t border-slate-800/60" : ""}>
                         <div className="flex items-center gap-1 text-emerald-400 font-semibold mb-1">
                           <Sparkles className="w-3 h-3" />
                           <span>Positive Grounding Anchors:</span>

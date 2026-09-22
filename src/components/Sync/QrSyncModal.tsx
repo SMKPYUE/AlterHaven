@@ -261,9 +261,29 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Primary File Upload Dropzone */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Paste Sync Payload or Backup JSON
+                <label className="cursor-pointer block border-2 border-dashed border-purple-500/40 hover:border-purple-500 bg-slate-950/60 hover:bg-slate-950 p-6 rounded-2xl text-center transition-all group">
+                  <Upload className="w-8 h-8 text-purple-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="text-xs font-bold text-slate-100 mb-0.5">
+                    Click to Choose Backup File (.json)
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Instant 1-click restore without copying raw text
+                  </p>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Textarea Fallback */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Or Paste Sync Payload Text
                 </label>
                 <textarea
                   value={importInput}
@@ -271,34 +291,21 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
                     setImportInput(e.target.value);
                     validateAndPreview(e.target.value);
                   }}
-                  rows={5}
-                  placeholder="Paste the exported sync JSON here..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:border-purple-500 resize-none"
+                  rows={3}
+                  placeholder="Paste JSON text here if transferring via clipboard..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-purple-500 resize-none"
                 />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <label className="cursor-pointer px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 flex items-center gap-2 transition-all">
-                  <Upload className="w-4 h-4 text-purple-400" />
-                  <span>Upload .json Backup File</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
               </div>
 
               {/* Preview Box */}
               {parsedPreview && (
-                <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 text-xs space-y-1.5">
+                <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 text-xs space-y-1.5 animate-in fade-in">
                   <div className="font-bold text-emerald-300 flex items-center gap-1.5">
                     <Check className="w-4 h-4" />
                     <span>Valid System Backup Detected:</span>
                   </div>
                   <div className="text-slate-200">
-                    <span className="font-semibold">{parsedPreview.system?.name}</span> (
+                    <span className="font-semibold text-purple-300">{parsedPreview.system?.name || 'System'}</span> (
                     {parsedPreview.alters?.length || 0} alters,{' '}
                     {parsedPreview.tasks?.length || 0} tasks,{' '}
                     {parsedPreview.rules?.length || 0} rules)
@@ -313,7 +320,7 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
               )}
 
               {importSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
                   <Check className="w-4 h-4" />
                   <span>Sync Successful! Reloading system state...</span>
                 </div>
@@ -323,7 +330,7 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl"
+                  className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
@@ -331,7 +338,7 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
                   type="button"
                   onClick={handleImportSubmit}
                   disabled={!parsedPreview}
-                  className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-purple-600/20"
+                  className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-purple-600/20 transition-all"
                 >
                   Confirm & Sync Overwrite
                 </button>

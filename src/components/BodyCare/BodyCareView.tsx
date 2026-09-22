@@ -32,6 +32,7 @@ export const BodyCareView: React.FC = () => {
     addMedication,
     deleteMedication,
     toggleMedicationTaken,
+    resetDailyTrackers,
     activeFronts,
     alters,
     playlists,
@@ -300,10 +301,22 @@ export const BodyCareView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className="text-xs text-slate-400 font-medium">
               {safeMeds.filter((m) => m.takenToday).length} of {safeMeds.length} taken today
             </span>
+            <button
+              onClick={() => {
+                if (confirm("Reset today's medication checks for a fresh day?")) {
+                  resetDailyTrackers();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-slate-100 text-xs font-semibold border border-slate-700 transition-all"
+              title="Reset all taken checks for today (auto-resets daily at midnight)"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Reset for New Day</span>
+            </button>
             <button
               onClick={() => setIsAddMedOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition-all"

@@ -42,6 +42,8 @@ export interface SystemState {
   setFront: (alterId: string, status: 'front' | 'co-front' | 'co-conscious', note?: string, energy?: number) => void;
   removeFromFront: (alterId: string) => void;
   clearFronts: () => void;
+  logBackdatedSwitch: (data: Omit<FrontLog, 'id' | 'systemId'>) => void;
+  deleteFrontLog: (logId: string) => void;
 
   // Corkboard & Widgets
   activeBoardId: string;
@@ -85,6 +87,7 @@ export interface SystemState {
   addMedication: (med: Omit<MedicationRecord, 'id' | 'takenToday' | 'lastTakenAt' | 'takenByAlterId'>) => void;
   deleteMedication: (medId: string) => void;
   toggleMedicationTaken: (medId: string, alterId: string) => void;
+  resetDailyTrackers: () => void;
   playlists: GroundingPlaylist[];
   addPlaylist: (playlist: Omit<GroundingPlaylist, 'id' | 'createdAt'>) => void;
   deletePlaylist: (id: string) => void;
@@ -846,12 +849,22 @@ const mergeSavedState = (saved: any) => {
     };
   }
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isNewDay = saved.bodyNeeds?.lastDailyResetDate && saved.bodyNeeds.lastDailyResetDate !== todayStr;
+
+  const rawMeds = Array.isArray(saved.bodyNeeds?.medications)
+    ? saved.bodyNeeds.medications
+    : (saved.bodyNeeds ? [] : initialBodyNeeds.medications);
+
+  const processedMeds = isNewDay
+    ? rawMeds.map((m: any) => ({ ...m, takenToday: false }))
+    : rawMeds;
+
   const mergedBodyNeeds: BodyNeedsMeter = {
     ...initialBodyNeeds,
     ...(saved.bodyNeeds || {}),
-    medications: Array.isArray(saved.bodyNeeds?.medications)
-      ? saved.bodyNeeds.medications
-      : (saved.bodyNeeds ? [] : initialBodyNeeds.medications),
+    medications: processedMeds,
+    lastDailyResetDate: todayStr,
   };
 
   const mergedBoards: Board[] =
@@ -1087,6 +1100,27 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     });
   },
 
+  logBackdatedSwitch: (data: Omit<FrontLog, 'id' | 'systemId'>) => {
+    set((state: SystemState) => {
+      const newLog: FrontLog = {
+        ...data,
+        id: 'fl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        systemId: state.system.id,
+      };
+      const updatedLogs = [newLog, ...state.frontLogs].sort((a, b) => b.startedAt - a.startedAt);
+      saveStore({ ...state, frontLogs: updatedLogs });
+      return { frontLogs: updatedLogs };
+    });
+  },
+
+  deleteFrontLog: (logId: string) => {
+    set((state: SystemState) => {
+      const updatedLogs = state.frontLogs.filter((l: FrontLog) => l.id !== logId);
+      saveStore({ ...state, frontLogs: updatedLogs });
+      return { frontLogs: updatedLogs };
+    });
+  },
+
   setActiveBoardId: (boardId: string) => set({ activeBoardId: boardId }),
 
   addBoard: (boardData: Omit<Board, 'id' | 'createdAt'>) => {
@@ -1215,7 +1249,12 @@ export const useSystemStore = create<SystemState>((set, get) => ({
           status,
           declineReason: status === 'declined' ? notes : t.declineReason,
           suggestedReassignmentAlterId: suggestedReassignmentAlterId || t.suggestedReassignmentAlterId,
-          assignedAlterId: (status === 'declined' && suggestedReassignmentAlterId) ? suggestedReassignmentAlterId : t.assignedAlterId,
+          assignedAlterId:
+            status === 'declined' && suggestedReassignmentAlterId
+              ? suggestedReassignmentAlterId
+              : t.assignedAlterId === 'anyone' && alterId && alterId !== 'anyone'
+              ? alterId
+              : t.assignedAlterId,
           handoffHistory: [...t.handoffHistory, newHandoffEvent],
           updatedAt: now,
         };
@@ -1377,6 +1416,24 @@ export const useSystemStore = create<SystemState>((set, get) => ({
         };
       });
       const updatedBody = { ...state.bodyNeeds, medications: updatedMeds, updatedAt: Date.now(), updatedByAlterId: alterId };
+      saveStore({ ...state, bodyNeeds: updatedBody });
+      return { bodyNeeds: updatedBody };
+    });
+  },
+
+  resetDailyTrackers: () => {
+    set((state: SystemState) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const resetMeds = state.bodyNeeds.medications.map((m: MedicationRecord) => ({
+        ...m,
+        takenToday: false,
+      }));
+      const updatedBody: BodyNeedsMeter = {
+        ...state.bodyNeeds,
+        medications: resetMeds,
+        lastDailyResetDate: todayStr,
+        updatedAt: Date.now(),
+      };
       saveStore({ ...state, bodyNeeds: updatedBody });
       return { bodyNeeds: updatedBody };
     });

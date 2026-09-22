@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useSystemStore } from '../../store/useSystemStore';
 import {
   History,
@@ -10,16 +10,20 @@ import {
   Sparkles,
   Calendar,
   Filter,
+  Trash2,
+  PlusCircle,
 } from 'lucide-react';
+import { BackdateSwitchModal } from './BackdateSwitchModal';
 
 interface FrontTrackerViewProps {
   onOpenFrontModal: () => void;
 }
 
 export const FrontTrackerView: React.FC<FrontTrackerViewProps> = ({ onOpenFrontModal }) => {
-  const { alters, activeFronts, frontLogs } = useSystemStore();
+  const { alters, activeFronts, frontLogs, deleteFrontLog } = useSystemStore();
 
   const [filterAlterId, setFilterAlterId] = useState<string>('all');
+  const [isBackdateModalOpen, setIsBackdateModalOpen] = useState(false);
 
   const mainFrontMember = activeFronts.find((f) => f.status === 'front');
   const mainFrontAlter = alters.find((a) => a.id === mainFrontMember?.alterId);
@@ -50,13 +54,22 @@ export const FrontTrackerView: React.FC<FrontTrackerViewProps> = ({ onOpenFrontM
           </p>
         </div>
 
-        <button
-          onClick={onOpenFrontModal}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all self-start sm:self-auto"
-        >
-          <Activity className="w-4 h-4" />
-          <span>Record / Switch Front</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setIsBackdateModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-all shadow-sm"
+          >
+            <History className="w-4 h-4 text-amber-400" />
+            <span>Log Past Switch</span>
+          </button>
+          <button
+            onClick={onOpenFrontModal}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
+          >
+            <Activity className="w-4 h-4" />
+            <span>Record / Switch Front</span>
+          </button>
+        </div>
       </div>
 
       {/* Active Front Status Card */}
@@ -233,11 +246,24 @@ export const FrontTrackerView: React.FC<FrontTrackerViewProps> = ({ onOpenFrontM
                     )}
                   </div>
 
-                  <div className="text-[11px] text-slate-500 sm:text-right shrink-0">
-                    <div>{new Date(log.startedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
-                    <div className="font-mono">
-                      {new Date(log.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                    <div className="text-[11px] text-slate-500 sm:text-right">
+                      <div>{new Date(log.startedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                      <div className="font-mono">
+                        {new Date(log.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete front log for ${alter.name}?`)) {
+                          deleteFrontLog(log.id);
+                        }
+                      }}
+                      className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                      title="Delete log entry"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -245,6 +271,10 @@ export const FrontTrackerView: React.FC<FrontTrackerViewProps> = ({ onOpenFrontM
           })}
         </div>
       </div>
+
+      {isBackdateModalOpen && (
+        <BackdateSwitchModal onClose={() => setIsBackdateModalOpen(false)} />
+      )}
     </div>
   );
 };

@@ -39,6 +39,8 @@ export const SettingsView: React.FC = () => {
     updateDevicePrefs,
     resetToDefaultData,
     openSetupWizard,
+    exportAllData,
+    importAllData,
   } = useSystemStore();
 
 
@@ -51,17 +53,12 @@ export const SettingsView: React.FC = () => {
   const [whName, setWhName] = useState('');
   const [whPreset, setWhPreset] = useState<WebhookPreset>('discord_webhook');
   const [whUrl, setWhUrl] = useState('');
-  const [testStatus, setTestStatus] = useState<Record<string, { loading: boolean; result?: string }>>({});
+  const [whNotifyFront, setWhNotifyFront] = useState(true);
+  const [whNotifyMed, setWhNotifyMed] = useState(false);
+  const [whNotifyTask, setWhNotifyTask] = useState(false);
 
-  const handleSaveSystem = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateSystem({
-      name: systemName.trim(),
-      tagline: systemTagline.trim() || undefined,
-      avatarUrl: avatarUrl.trim() || undefined,
-    });
-    alert('System profile saved!');
-  };
+  // Test Webhook Status State
+  const [testResults, setTestResults] = useState<Record<string, { loading: boolean; result?: string }>>({});
 
   const handleCreateWebhook = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,12 +78,22 @@ export const SettingsView: React.FC = () => {
     setIsAddWhModalOpen(false);
   };
 
-  const handleTestPing = async (whId: string) => {
-    setTestStatus((prev) => ({ ...prev, [whId]: { loading: true } }));
-    const res = await triggerWebhookTest(whId);
-    setTestStatus((prev) => ({
+  const handleSaveSystem = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSystem({
+      name: systemName.trim(),
+      tagline: systemTagline.trim() || undefined,
+      avatarUrl: avatarUrl.trim() || undefined,
+    });
+    alert('System settings updated successfully!');
+  };
+
+  const handleTestWebhook = async (id: string) => {
+    setTestResults((prev) => ({ ...prev, [id]: { loading: true } }));
+    const res = await triggerWebhookTest(id);
+    setTestResults((prev) => ({
       ...prev,
-      [whId]: {
+      [id]: {
         loading: false,
         result: res.success ? '✅ Test ping sent successfully!' : `❌ Failed: ${res.error}`,
       },
@@ -94,13 +101,13 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleExportBackup = () => {
-    const data = localStorage.getItem('alterhaven_data_v1') || localStorage.getItem('systemboard_data_v1');
+    const data = exportAllData();
     if (!data) return;
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `alterhaven_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `alterhaven_backup_${system.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -112,13 +119,14 @@ export const SettingsView: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.system && json.alters) {
-          localStorage.setItem('alterhaven_data_v1', JSON.stringify(json));
-          alert('Backup restored successfully! Reloading...');
-          window.location.reload();
-        } else {
-          alert('Invalid backup file format.');
+        const text = event.target?.result as string;
+        if (text) {
+          const success = importAllData(text);
+          if (success) {
+            alert('Backup restored successfully!');
+          } else {
+            alert('Invalid backup file structure.');
+          }
         }
       } catch (err) {
         alert('Failed to parse JSON backup file.');

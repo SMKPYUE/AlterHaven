@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useSystemStore } from '../../store/useSystemStore';
 import { Task } from '../../types';
 import { TaskCard } from './TaskCard';
@@ -43,7 +43,9 @@ export const TaskManager: React.FC = () => {
     if (!matchesSearch) return false;
 
     if (activeFilter === 'my_requests') {
-      return mainFrontAlter ? task.assignedAlterId === mainFrontAlter.id && task.status === 'requested' : true;
+      return mainFrontAlter
+        ? (task.assignedAlterId === mainFrontAlter.id || task.assignedAlterId === 'anyone') && task.status === 'requested'
+        : task.status === 'requested';
     }
     if (activeFilter === 'in_progress') {
       return task.status === 'in_progress' || task.status === 'accepted';

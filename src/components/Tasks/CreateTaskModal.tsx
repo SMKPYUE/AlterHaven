@@ -109,6 +109,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose }) => 
                 onChange={(e) => setAssignedAlterId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
+                <option value="anyone">✨ Anyone (Open Task / Any Front)</option>
                 {alters.map((alter) => (
                   <option key={alter.id} value={alter.id}>
                     {alter.name} ({alter.pronouns.join('/')})

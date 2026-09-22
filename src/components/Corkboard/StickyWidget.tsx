@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { BoardWidget } from '../../types';
 import { useSystemStore } from '../../store/useSystemStore';
+import { EditWidgetModal } from './EditWidgetModal';
 import {
   Pin,
   Check,
@@ -14,6 +15,8 @@ import {
   Pause,
   Lock,
   GripHorizontal,
+  Edit2,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface StickyWidgetProps {
@@ -26,6 +29,7 @@ export const StickyWidget: React.FC<StickyWidgetProps> = ({ widget, zoom = 1 }) 
 
   const author = alters.find((a) => a.id === widget.authorAlterId);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef<{ x: number; y: number; startLeft: number; startTop: number }>({
     x: 0,
@@ -173,27 +177,51 @@ export const StickyWidget: React.FC<StickyWidgetProps> = ({ widget, zoom = 1 }) 
           {widget.type === 'urgent_ribbon' && <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 animate-bounce" />}
           {widget.type === 'rule_card' && <Shield className="w-4 h-4 text-indigo-400 shrink-0" />}
           {widget.type === 'voice_memo' && <Volume2 className="w-4 h-4 text-indigo-300 shrink-0" />}
+          {widget.type === 'photo_pin' && <ImageIcon className="w-4 h-4 text-pink-500 shrink-0" />}
 
           <h4 className={`text-xs font-bold truncate ${isLightBackground ? 'text-slate-900' : 'text-slate-100'}`}>
-            {widget.title || (widget.type === 'urgent_ribbon' ? 'Urgent Alert' : 'Note')}
+            {widget.title || (widget.type === 'urgent_ribbon' ? 'Urgent Alert' : widget.type === 'photo_pin' ? 'Photo Pin' : 'Note')}
           </h4>
         </div>
 
-        {/* Delete Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteWidget(widget.id);
-          }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/10 text-slate-500 hover:text-rose-600 transition-all shrink-0"
-          title="Delete Note"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        {/* Action Buttons (Edit & Delete) */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditModalOpen(true);
+            }}
+            className="p-1 rounded hover:bg-black/10 text-slate-600 hover:text-indigo-600 transition-colors"
+            title="Edit Note"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteWidget(widget.id);
+            }}
+            className="p-1 rounded hover:bg-black/10 text-slate-600 hover:text-rose-600 transition-colors"
+            title="Delete Note"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Body Content */}
       <div className="space-y-2 text-xs">
+        {/* Photo Pin Image */}
+        {widget.imageUrl && (
+          <div className="rounded-xl overflow-hidden border border-black/10 shadow-inner max-h-56 bg-black/5 flex items-center justify-center">
+            <img
+              src={widget.imageUrl}
+              alt={widget.title || 'Corkboard photo'}
+              className="w-full h-full object-cover max-h-56 select-none pointer-events-none"
+            />
+          </div>
+        )}
+
         {widget.content && (
           <p
             className={`whitespace-pre-line leading-relaxed ${
@@ -281,6 +309,15 @@ export const StickyWidget: React.FC<StickyWidgetProps> = ({ widget, zoom = 1 }) 
           {new Date(widget.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
         </span>
       </div>
+
+      {/* Edit Widget Modal */}
+      {isEditModalOpen && (
+        <EditWidgetModal
+          widget={widget}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

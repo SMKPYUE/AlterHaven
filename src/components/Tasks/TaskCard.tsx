@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Task, TaskNegotiationStatus } from '../../types';
 import { useSystemStore } from '../../store/useSystemStore';
 import {
@@ -35,9 +35,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   const creator = alters.find((a) => a.id === task.creatorAlterId);
   const assignee = alters.find((a) => a.id === task.assignedAlterId);
+  const isAnyone = task.assignedAlterId === 'anyone' || !task.assignedAlterId;
   const mainFrontId = activeFronts.find((f) => f.status === 'front')?.alterId;
 
-  const isAssignedToCurrentFront = mainFrontId === task.assignedAlterId;
+  const isAssignedToCurrentFront = isAnyone || mainFrontId === task.assignedAlterId;
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
@@ -80,7 +81,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       size: { width: 300, height: 180 },
       color: '#fef3c7',
       title: `📋 Mission: ${task.title}`,
-      content: `Assigned: ${assignee?.name || 'Alter'}\nPreferred Time: ${task.preferredFrontTimeWindow || 'Any'}\nStatus: ${task.status}`,
+      content: `Assigned: ${isAnyone ? 'Anyone (Open)' : (assignee?.name || 'Alter')}\nPreferred Time: ${task.preferredFrontTimeWindow || 'Any'}\nStatus: ${task.status}`,
       isPinned: true,
     });
     alert('Task successfully pinned to the active Corkboard!');
@@ -169,15 +170,28 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
           {/* Assignee */}
           <div className="flex items-center gap-1.5 min-w-0">
-            <div
-              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-              style={{ backgroundColor: assignee?.colorHex || '#64748b' }}
-            >
-              {assignee?.name.slice(0, 1) || 'A'}
-            </div>
-            <span className="text-[11px] font-semibold text-slate-200 truncate">
-              {assignee?.name || 'Unassigned'}
-            </span>
+            {isAnyone ? (
+              <>
+                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+                  ✨
+                </div>
+                <span className="text-[11px] font-semibold text-indigo-300 truncate">
+                  Anyone (Open Task)
+                </span>
+              </>
+            ) : (
+              <>
+                <div
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                  style={{ backgroundColor: assignee?.colorHex || '#64748b' }}
+                >
+                  {assignee?.name.slice(0, 1) || 'A'}
+                </div>
+                <span className="text-[11px] font-semibold text-slate-200 truncate">
+                  {assignee?.name || 'Unassigned'}
+                </span>
+              </>
+            )}
           </div>
         </div>
 

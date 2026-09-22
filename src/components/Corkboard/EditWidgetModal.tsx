@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { WidgetType, ChecklistItem } from '../../types';
+import { BoardWidget, ChecklistItem, WidgetType } from '../../types';
 import { useSystemStore } from '../../store/useSystemStore';
 import { processImageFile } from '../../utils/imageUtils';
 import {
@@ -17,8 +17,9 @@ import {
   Maximize2,
 } from 'lucide-react';
 
-interface AddWidgetModalProps {
-  boardId: string;
+interface EditWidgetModalProps {
+  widget: BoardWidget;
+  isOpen: boolean;
   onClose: () => void;
 }
 
@@ -41,22 +42,26 @@ const NOTE_SIZES = [
   { name: 'Square', width: 320, height: 320 },
 ];
 
-export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose }) => {
-  const { alters, activeFronts, widgets, addWidget } = useSystemStore();
+export const EditWidgetModal: React.FC<EditWidgetModalProps> = ({ widget, isOpen, onClose }) => {
+  const { alters, updateWidget } = useSystemStore();
 
-  const mainFrontId = activeFronts.find((f) => f.status === 'front')?.alterId || alters[0]?.id || '';
+  const [type, setType] = useState<WidgetType>(widget.type || 'sticky_note');
+  const [authorAlterId, setAuthorAlterId] = useState<string>(widget.authorAlterId || alters[0]?.id || '');
+  const [title, setTitle] = useState(widget.title || '');
+  const [content, setContent] = useState(widget.content || '');
+  const [color, setColor] = useState(widget.color || STICKY_COLORS[0].hex);
+  const [imageUrl, setImageUrl] = useState(widget.imageUrl || '');
+  const [size, setSize] = useState(widget.size || { width: 320, height: 220 });
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(
+    widget.checklistItems && widget.checklistItems.length > 0
+      ? widget.checklistItems
+      : [
+          { id: '1', text: '', done: false },
+          { id: '2', text: '', done: false },
+        ]
+  );
 
-  const [type, setType] = useState<WidgetType>('sticky_note');
-  const [authorAlterId, setAuthorAlterId] = useState<string>(mainFrontId);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [color, setColor] = useState(STICKY_COLORS[0].hex);
-  const [imageUrl, setImageUrl] = useState('');
-  const [size, setSize] = useState({ width: 320, height: 220 });
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([
-    { id: '1', text: '', done: false },
-    { id: '2', text: '', done: false },
-  ]);
+  if (!isOpen) return null;
 
   const handleAddChecklistItem = () => {
     setChecklist([...checklist, { id: Date.now().toString(), text: '', done: false }]);
@@ -73,48 +78,27 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const existingCount = widgets.filter((w) => w.boardId === boardId).length;
-    const col = existingCount % 4;
-    const row = Math.floor(existingCount / 4) % 4;
-    const safeX = Math.min(1800 - 360, 40 + col * 350 + Math.floor(Math.random() * 20));
-    const safeY = Math.min(1200 - 240, 40 + row * 230 + Math.floor(Math.random() * 20));
-
-    const finalWidth = type === 'urgent_ribbon' ? 360 : size.width;
-    const finalHeight = type === 'urgent_ribbon' ? 140 : size.height;
-
-    const newWidget = {
-      boardId,
+    updateWidget(widget.id, {
       authorAlterId,
       type,
-      position: {
-        x: safeX,
-        y: safeY,
-        zIndex: 10,
-        rotation: Number(((Math.random() - 0.5) * 4).toFixed(1)),
-      },
-      size: {
-        width: finalWidth,
-        height: finalHeight,
-      },
       color,
+      size,
       title: title.trim() || undefined,
       content: content.trim() || undefined,
-      imageUrl: type === 'photo_pin' ? imageUrl : undefined,
+      imageUrl: type === 'photo_pin' ? imageUrl : widget.imageUrl,
       checklistItems:
         type === 'checklist'
           ? checklist.filter((item) => item.text.trim().length > 0)
           : undefined,
-      urgencyLevel: type === 'urgent_ribbon' ? ('urgent' as const) : undefined,
-      isPinned: true,
-    };
+      urgencyLevel: type === 'urgent_ribbon' ? 'urgent' : undefined,
+    });
 
-    addWidget(newWidget);
     onClose();
   };
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -122,7 +106,9 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <h3 className="text-sm font-bold text-slate-100">Add Item to Corkboard</h3>
+          <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+            <span>Edit Corkboard Item</span>
+          </h3>
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
@@ -184,13 +170,13 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
           {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Title / Header (Optional)
+              Title / Header
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Remember to eat lunch, System Rule #3"
+              placeholder="e.g. Remember to eat lunch, System Notice"
               className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -222,7 +208,7 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
             </div>
           </div>
 
-          {/* Color Selection for Sticky, Checklist & Photo Pin */}
+          {/* Color Selection */}
           {(type === 'sticky_note' || type === 'checklist' || type === 'photo_pin') && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
@@ -257,7 +243,7 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
           {type === 'photo_pin' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Photo Pin Image *
+                Photo Pin Image
               </label>
               <div className="flex items-center gap-3">
                 {imageUrl && (
@@ -299,15 +285,14 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
             </div>
           )}
 
-          {/* Body or Checklist editor */}
+          {/* Note Content / Checklist */}
           {type !== 'checklist' ? (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Note Content {type === 'photo_pin' ? '(Caption / Notes)' : '*'}
+                Note Content
               </label>
               <textarea
                 rows={3}
-                required={type !== 'photo_pin'}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Write your note, reminder, or handoff thought here..."
@@ -362,7 +347,7 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ boardId, onClose
               type="submit"
               className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all"
             >
-              Pin to Board
+              Save Changes
             </button>
           </div>
         </form>

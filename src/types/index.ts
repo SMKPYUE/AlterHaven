@@ -24,6 +24,7 @@ export type AlterRole =
   | 'Other';
 
 export interface SensoryAnchors {
+  switchTriggers?: string[];  // Positive switch triggers (music, sensory, topics)
   positiveTriggers: string[]; // Calming scents, sounds, items, grounding phrases
   distressTriggers: string[]; // Triggers to avoid / sensory overloads
 }
@@ -199,6 +200,7 @@ export interface BodyNeedsMeter {
   lastMealTime?: number;
   lastWaterTime?: number;
   medications: MedicationRecord[];
+  lastDailyResetDate?: string; // e.g. "2026-09-22"
   updatedAt: number;
   updatedByAlterId?: string;
 }

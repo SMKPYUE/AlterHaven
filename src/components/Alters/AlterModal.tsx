@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Alter, AlterRole } from '../../types';
 import { useSystemStore } from '../../store/useSystemStore';
-import { X, Sparkles, Shield, Lock, Radio, Image as ImageIcon, Upload, Trash2 } from 'lucide-react';
+import { X, Sparkles, Shield, Lock, Radio, Image as ImageIcon, Upload, Trash2, Zap } from 'lucide-react';
 import { processImageFile } from '../../utils/imageUtils';
 
 interface AlterModalProps {
@@ -56,7 +56,12 @@ export const AlterModal: React.FC<AlterModalProps> = ({ alter, onClose }) => {
     alter?.roles && Array.isArray(alter.roles) ? alter.roles : ['Host']
   );
 
-  // Sensory Anchors (Safe navigation)
+  // Sensory Anchors & Switch Triggers (Safe navigation)
+  const [switchTriggers, setSwitchTriggers] = useState(
+    alter?.sensoryAnchors?.switchTriggers && Array.isArray(alter.sensoryAnchors.switchTriggers)
+      ? alter.sensoryAnchors.switchTriggers.join('\n')
+      : ''
+  );
   const [positiveTriggers, setPositiveTriggers] = useState(
     alter?.sensoryAnchors?.positiveTriggers && Array.isArray(alter.sensoryAnchors.positiveTriggers)
       ? alter.sensoryAnchors.positiveTriggers.join('\n')
@@ -87,6 +92,11 @@ export const AlterModal: React.FC<AlterModalProps> = ({ alter, onClose }) => {
     setAgeAppearance(alter?.ageAppearance || '');
     setDescription(alter?.description || '');
     setSelectedRoles(alter?.roles && Array.isArray(alter.roles) ? alter.roles : ['Host']);
+    setSwitchTriggers(
+      alter?.sensoryAnchors?.switchTriggers && Array.isArray(alter.sensoryAnchors.switchTriggers)
+        ? alter.sensoryAnchors.switchTriggers.join('\n')
+        : ''
+    );
     setPositiveTriggers(
       alter?.sensoryAnchors?.positiveTriggers && Array.isArray(alter.sensoryAnchors.positiveTriggers)
         ? alter.sensoryAnchors.positiveTriggers.join('\n')
@@ -128,6 +138,11 @@ export const AlterModal: React.FC<AlterModalProps> = ({ alter, onClose }) => {
       .map((p) => p.trim())
       .filter(Boolean);
 
+    const parsedSwitch = switchTriggers
+      .split('\n')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
     const parsedPositive = positiveTriggers
       .split('\n')
       .map((t) => t.trim())
@@ -148,6 +163,7 @@ export const AlterModal: React.FC<AlterModalProps> = ({ alter, onClose }) => {
       ageAppearance: ageAppearance.trim() || undefined,
       description: description.trim() || undefined,
       sensoryAnchors: {
+        switchTriggers: parsedSwitch,
         positiveTriggers: parsedPositive,
         distressTriggers: parsedDistress,
       },
@@ -368,34 +384,56 @@ export const AlterModal: React.FC<AlterModalProps> = ({ alter, onClose }) => {
             />
           </div>
 
-          {/* Sensory Anchors (Positive vs Distress) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-950/50 border border-slate-800">
+          {/* Sensory Anchors, Switch Triggers & Distress Triggers */}
+          <div className="space-y-3 p-4 rounded-2xl bg-slate-950/50 border border-slate-800">
+            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Triggers & Sensory Anchors
+            </h3>
+
+            {/* 1. Positive Switch Triggers */}
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                Positive Sensory Anchors (1 per line)
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-indigo-400 mb-1">
+                <Zap className="w-3.5 h-3.5" />
+                Positive Switch Triggers (Helps Switch In - 1 per line)
               </label>
               <textarea
-                rows={3}
-                value={positiveTriggers}
-                onChange={(e) => setPositiveTriggers(e.target.value)}
-                placeholder="Peppermint tea&#10;Weighted blanket&#10;Lo-fi playlist&#10;Soft teddy bear"
-                className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono resize-none"
+                rows={2}
+                value={switchTriggers}
+                onChange={(e) => setSwitchTriggers(e.target.value)}
+                placeholder="Favorite song / playlist&#10;Specific video game / hobby&#10;Hearing alter's name&#10;Comfort hoodie"
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono resize-none"
               />
             </div>
 
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 mb-1">
-                <Shield className="w-3.5 h-3.5" />
-                Distress Triggers to Avoid (1 per line)
-              </label>
-              <textarea
-                rows={3}
-                value={distressTriggers}
-                onChange={(e) => setDistressTriggers(e.target.value)}
-                placeholder="Sudden loud alarms&#10;Crowded stores&#10;Aggressive tone&#10;Fluorescent lights"
-                className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono resize-none"
-              />
+            {/* 2 & 3: Grounding Anchors & Distress Triggers */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 mb-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Grounding Anchors (1 per line)
+                </label>
+                <textarea
+                  rows={2}
+                  value={positiveTriggers}
+                  onChange={(e) => setPositiveTriggers(e.target.value)}
+                  placeholder="Peppermint tea&#10;Weighted blanket&#10;Deep breathing"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 mb-1">
+                  <Shield className="w-3.5 h-3.5" />
+                  Distress Triggers to Avoid (1 per line)
+                </label>
+                <textarea
+                  rows={2}
+                  value={distressTriggers}
+                  onChange={(e) => setDistressTriggers(e.target.value)}
+                  placeholder="Loud unexpected alarms&#10;Crowded stores&#10;Aggressive tone"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono resize-none"
+                />
+              </div>
             </div>
           </div>
 
