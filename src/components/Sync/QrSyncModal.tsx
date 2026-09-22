@@ -8,10 +8,11 @@ import {
   Check,
   ShieldCheck,
   RefreshCw,
-  FileJson,
   Smartphone,
   Laptop,
+  AlertCircle,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useSystemStore } from '../../store/useSystemStore';
 
 interface QrSyncModalProps {
@@ -19,7 +20,7 @@ interface QrSyncModalProps {
 }
 
 export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
-  const { system, alters, exportAllData, importAllData } = useSystemStore();
+  const { system, alters, exportAllData, importAllData, recordBackup } = useSystemStore();
 
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [copied, setCopied] = useState(false);
@@ -27,74 +28,77 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
   const [parsedPreview, setParsedPreview] = useState<any | null>(null);
+  const [qrRendered, setQrRendered] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const exportPayload = exportAllData();
+  // Generate payload string safely
+  const [exportPayload, setExportPayload] = useState<string>('');
 
-  // Draw procedural QR pattern on canvas
   useEffect(() => {
-    if (activeTab !== 'export' || !canvasRef.current) return;
+    try {
+      const data = exportAllData();
+      setExportPayload(data);
+    } catch (e) {
+      console.error('Failed to export system payload:', e);
+    }
+  }, [system, alters.length]);
+
+  // Render authentic scannable QR code on canvas
+  useEffect(() => {
+    if (activeTab !== 'export' || !canvasRef.current || !exportPayload) return;
+
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
-    const size = canvas.width;
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, size, size);
-
-    // Procedural sync visual grid based on hash of payload
-    const gridSize = 25;
-    const cellSize = size / gridSize;
-
-    let hash = 0;
-    for (let i = 0; i < exportPayload.length; i++) {
-      hash = (hash << 5) - hash + exportPayload.charCodeAt(i);
-      hash |= 0;
+    // Build the data to encode in QR code
+    // Standard QR codes can reliably hold up to ~2-3 KB.
+    let qrData = exportPayload;
+    if (exportPayload.length > 2200) {
+      // Create a compact payload for fast peer scanning
+      qrData = JSON.stringify({
+        app: 'AlterHaven',
+        v: '2.0',
+        systemId: system.id,
+        name: system.name,
+        altersCount: alters.length,
+        timestamp: Date.now(),
+        note: 'Full system backup available via Download Backup .json button',
+      });
     }
 
-    // Outer alignment boxes
-    const drawFinder = (x: number, y: number) => {
-      ctx.fillStyle = '#6366f1';
-      ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
-      ctx.fillStyle = '#a855f7';
-      ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
-    };
-
-    drawFinder(1, 1);
-    drawFinder(gridSize - 8, 1);
-    drawFinder(1, gridSize - 8);
-
-    // Dynamic data cells
-    ctx.fillStyle = '#e2e8f0';
-    for (let r = 0; r < gridSize; r++) {
-      for (let c = 0; c < gridSize; c++) {
-        if (
-          (r < 9 && c < 9) ||
-          (r < 9 && c > gridSize - 10) ||
-          (r > gridSize - 10 && c < 9)
-        ) {
-          continue;
-        }
-
-        const charCode = exportPayload.charCodeAt((r * gridSize + c) % exportPayload.length) || 0;
-        const cellHash = (hash ^ (charCode * (r + 1) * (c + 1))) % 100;
-        if (cellHash > 45) {
-          ctx.fillRect(c * cellSize, r * cellSize, cellSize - 1, cellSize - 1);
+    QRCode.toCanvas(
+      canvas,
+      qrData,
+      {
+        width: 220,
+        margin: 2,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      },
+      (err) => {
+        if (err) {
+          console.error('QRCode canvas render error:', err);
+          setQrRendered(false);
+        } else {
+          setQrRendered(true);
         }
       }
-    }
-  }, [activeTab, exportPayload]);
+    );
+  }, [activeTab, exportPayload, system.name, alters.length]);
 
   const handleCopy = () => {
+    if (!exportPayload) return;
     navigator.clipboard.writeText(exportPayload);
+    recordBackup();
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadFile = () => {
+    if (!exportPayload) return;
     const blob = new Blob([exportPayload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -102,6 +106,7 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
     a.download = `alterhaven_backup_${system.name.replace(/\s+/g, '_')}_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    recordBackup();
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,7 +136,7 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
       }
     } catch (e) {
       setParsedPreview(null);
-      setImportError('Could not parse JSON format. Please check the pasted text.');
+      setImportError('Could not parse JSON format. Please check the backup file.');
     }
   };
 
@@ -149,8 +154,13 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="px-6 py-4 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -204,17 +214,19 @@ export const QrSyncModal: React.FC<QrSyncModalProps> = ({ onClose }) => {
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
           {activeTab === 'export' ? (
             <div className="space-y-5">
-              {/* Visual Sync Badge & Canvas */}
+              {/* QR Code Canvas */}
               <div className="flex flex-col items-center justify-center p-4 bg-slate-950 rounded-2xl border border-slate-800">
-                <canvas
-                  ref={canvasRef}
-                  width={220}
-                  height={220}
-                  className="rounded-xl border border-slate-700 shadow-inner"
-                />
-                <div className="text-[11px] text-slate-400 mt-2.5 font-medium flex items-center gap-1.5">
+                <div className="p-2 bg-white rounded-2xl shadow-lg inline-block">
+                  <canvas
+                    ref={canvasRef}
+                    width={220}
+                    height={220}
+                    className="block rounded-lg"
+                  />
+                </div>
+                <div className="text-[11px] text-slate-400 mt-3 font-medium flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Encrypted Local State Signature</span>
+                  <span>Encrypted Offline System Signature</span>
                 </div>
               </div>
 

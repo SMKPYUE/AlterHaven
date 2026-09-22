@@ -1908,7 +1908,6 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
   exportAllData: () => {
     const state = get();
-    state.recordBackup();
     const payload = {
       system: state.system,
       alters: state.alters,
