@@ -41,6 +41,9 @@ export const SettingsView: React.FC = () => {
     openSetupWizard,
     exportAllData,
     importAllData,
+    lastBackupTimestamp,
+    hasEmergencySnapshot,
+    restoreEmergencySnapshot,
   } = useSystemStore();
 
 
@@ -448,13 +451,53 @@ export const SettingsView: React.FC = () => {
 
       {/* 3. Data Backup & Local Storage */}
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-        <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-emerald-400" />
-          <span>Local Storage & Backup Management</span>
-        </h3>
-        <p className="text-xs text-slate-400">
-          Save your complete AlterHaven offline backup JSON file, transfer via QR code, or restore onto another browser/device with zero cloud risk.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-emerald-400" />
+              <span>Local Storage & Backup Management</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Save your complete AlterHaven offline backup JSON file, transfer via QR code, or restore onto another browser/device with zero cloud risk.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 self-start sm:self-auto">
+            <span className="text-slate-400">Last Backup Saved:</span>
+            <span className={lastBackupTimestamp ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>
+              {lastBackupTimestamp
+                ? new Date(lastBackupTimestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Never (Backup Recommended)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Emergency snapshot banner if available */}
+        {hasEmergencySnapshot() && (
+          <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-indigo-200">
+              <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>
+                <strong>Automated Safety Snapshot Active:</strong> A rolling shadow copy is saved in this browser.
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                if (confirm('Restore from the local automated emergency snapshot? This will overwrite the current working session with the last automated snapshot.')) {
+                  const success = restoreEmergencySnapshot();
+                  if (success) {
+                    alert('Restored successfully from automated emergency snapshot!');
+                  } else {
+                    alert('Could not restore emergency snapshot.');
+                  }
+                }
+              }}
+              className="px-3 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 font-semibold text-[11px] self-start sm:self-auto transition-colors"
+            >
+              Restore Emergency Snapshot
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button

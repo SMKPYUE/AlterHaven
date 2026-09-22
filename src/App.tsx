@@ -18,6 +18,7 @@ import { HandoffBriefingModal } from './components/Tasks/HandoffBriefingModal';
 import { QrSyncModal } from './components/Sync/QrSyncModal';
 import { PwaInstallModal } from './components/Install/PwaInstallModal';
 import { SetupWizardModal } from './components/Setup/SetupWizardModal';
+import { BackupReminderBanner } from './components/Backup/BackupReminderBanner';
 import { useSystemStore } from './store/useSystemStore';
 
 export function App() {
@@ -58,6 +59,9 @@ export function App() {
         onOpenBriefingModal={(alterId) => openBriefingModal(alterId)}
         onOpenInstallModal={() => setIsInstallModalOpen(true)}
       />
+
+      {/* Backup Failsafe / Periodic Safety Banner */}
+      <BackupReminderBanner />
 
       {/* Main Workspace Area */}
       <div className="flex flex-1 overflow-hidden">

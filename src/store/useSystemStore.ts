@@ -158,11 +158,55 @@ export interface SystemState {
       description?: string;
     }
   ) => void;
-}
 
+  // Backup Failsafe & Periodic Reminder
+  lastBackupTimestamp: number | null;
+  dismissedBackupReminderUntil: number | null;
+  recordBackup: () => void;
+  dismissBackupReminder: (days?: number) => void;
+  hasEmergencySnapshot: () => boolean;
+  restoreEmergencySnapshot: () => boolean;
+}
 
 const STORAGE_KEY = 'alterhaven_data_v1';
 const LEGACY_STORAGE_KEY = 'systemboard_data_v1';
+const BACKUP_TIMESTAMP_KEY = 'alterhaven_last_backup';
+const BACKUP_DISMISS_KEY = 'alterhaven_dismiss_backup';
+const EMERGENCY_SNAPSHOT_KEY = 'alterhaven_emergency_snapshot';
+
+const saveStore = (state: any) => {
+  try {
+    const dataToSave = {
+      system: state.system,
+      alters: state.alters,
+      boards: state.boards,
+      widgets: state.widgets,
+      tasks: state.tasks,
+      channels: state.channels,
+      messages: state.messages,
+      bodyNeeds: state.bodyNeeds,
+      webhooks: state.webhooks,
+      playlists: state.playlists,
+      rules: state.rules,
+      polls: state.polls,
+      contacts: state.contacts,
+      devicePrefs: state.devicePrefs,
+      activeBoardId: state.activeBoardId,
+      activeChannelId: state.activeChannelId,
+      activeFronts: state.activeFronts,
+      frontLogs: state.frontLogs,
+      lastSavedAt: Date.now(),
+    };
+    const jsonStr = JSON.stringify(dataToSave);
+    localStorage.setItem(STORAGE_KEY, jsonStr);
+
+    if (Array.isArray(state.alters) && state.alters.length > 0) {
+      localStorage.setItem(EMERGENCY_SNAPSHOT_KEY, jsonStr);
+    }
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+};
 
 const initialSystem: System = {
   id: 'sys_1',
@@ -942,6 +986,61 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   isBriefingModalOpen: false,
   briefingAlterId: null,
 
+  // Backup Failsafe & Periodic Reminder
+  lastBackupTimestamp: (() => {
+    try {
+      const val = localStorage.getItem(BACKUP_TIMESTAMP_KEY);
+      return val ? parseInt(val, 10) : null;
+    } catch {
+      return null;
+    }
+  })(),
+  dismissedBackupReminderUntil: (() => {
+    try {
+      const val = localStorage.getItem(BACKUP_DISMISS_KEY);
+      return val ? parseInt(val, 10) : null;
+    } catch {
+      return null;
+    }
+  })(),
+  recordBackup: () => {
+    const now = Date.now();
+    try {
+      localStorage.setItem(BACKUP_TIMESTAMP_KEY, String(now));
+    } catch (e) {
+      console.error(e);
+    }
+    set({ lastBackupTimestamp: now });
+  },
+  dismissBackupReminder: (days: number = 3) => {
+    const until = Date.now() + days * 86400000;
+    try {
+      localStorage.setItem(BACKUP_DISMISS_KEY, String(until));
+    } catch (e) {
+      console.error(e);
+    }
+    set({ dismissedBackupReminderUntil: until });
+  },
+  hasEmergencySnapshot: () => {
+    try {
+      return !!localStorage.getItem(EMERGENCY_SNAPSHOT_KEY);
+    } catch {
+      return false;
+    }
+  },
+  restoreEmergencySnapshot: () => {
+    try {
+      const snap = localStorage.getItem(EMERGENCY_SNAPSHOT_KEY);
+      if (!snap) return false;
+      const parsed = JSON.parse(snap);
+      if (!parsed.system || !parsed.alters) return false;
+      return get().importAllData(snap);
+    } catch (e) {
+      console.error('Failed to restore emergency snapshot', e);
+      return false;
+    }
+  },
+
   resetToDefaultData: () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -1713,6 +1812,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
   exportAllData: () => {
     const state = get();
+    state.recordBackup();
     const payload = {
       system: state.system,
       alters: state.alters,
@@ -1900,34 +2000,6 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     });
   },
 }));
-
-function saveStore(state: any) {
-  try {
-    const toSave = {
-      system: state.system,
-      alters: state.alters,
-      activeFronts: state.activeFronts,
-      frontLogs: state.frontLogs,
-      activeBoardId: state.activeBoardId,
-      boards: state.boards,
-      widgets: state.widgets,
-      tasks: state.tasks,
-      activeChannelId: state.activeChannelId,
-      channels: state.channels,
-      messages: state.messages,
-      bodyNeeds: state.bodyNeeds,
-      webhooks: state.webhooks,
-      playlists: state.playlists,
-      rules: state.rules,
-      polls: state.polls,
-      contacts: state.contacts,
-      devicePrefs: state.devicePrefs,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch (e) {
-    console.error('Failed to persist to localStorage', e);
-  }
-}
 
 // Automatically persist all state changes to local storage
 useSystemStore.subscribe((state) => {
